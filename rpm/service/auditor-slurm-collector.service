@@ -1,0 +1,42 @@
+[Unit]
+Description=Slurm collector for AUDITOR
+Documentation=https://alu-schumacher.github.io/AUDITOR
+After=network-online.target multi-user.target
+Requires=network-online.target
+
+[Service]
+ExecStart=/usr/bin/auditor-slurm-collector /etc/auditor/auditor-slurm-collector.yaml
+User=auditor-slurm-collector
+Group=auditor-slurm-collector
+StandardOutput=append:/var/log/auditor-slurm-collector.log
+StandardError=inherit
+CapabilityBoundingSet=
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+ProtectProc=invisible
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @debug @resources
+SystemCallErrorNumber=EPERM
+MemoryDenyWriteExecute=yes
+UMask=0177
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

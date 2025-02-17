@@ -5,28 +5,65 @@ Summary:        Slurm collector for AUDITOR
 BuildArch:      x86_64
 
 License:        MIT or Apache-2.0
-Source0:        %{name}-%{version}.tar.gz
-
-#Requires:       bash
 
 %description
 Slurm collector for Auditor
 
-%prep
-%setup -q
+%global confdir %{_sysconfdir}/auditor
+%global statedir %{_localstatedir}/lib/%{name}
+%global unitdir /usr/lib/systemd/system
+%global user %{name}
+
+%pre
+# On install
+if [ "$1" -eq 1 ]; then
+    getent group %{user} || groupadd --system %{user}
+    getent passwd %{user} || useradd --system --no-create-home --gid %{user} --shell /sbin/nologin %{user}
+fi
+
+%post
+# On install
+if [ "$1" -eq 1 ]; then
+    systemctl --no-reload preset %{name}
+fi
+
+%preun
+# On uninstall
+if [ "$1" -eq 0 ]; then
+    systemctl --no-reload disable --now --no-warn %{name}
+fi
+
+%postun
+# On update
+if [ "$1" -ge 1 ]; then
+    systemctl set-property %{name} Markers=+needs-restart
+fi
+# On uninstall
+if [ "$1" -eq 0 ]; then
+    # Clean up /etc/auditor (there might stuff not belonging to this package)
+    rmdir %{confdir} || true
+    # Only remove our own files
+    runuser -u %{user} -- rm -rf %{statedir}/*
+    rmdir %{statedir} || echo "There are leftover files under %{statedir}!"
+    USERGROUPS_ENAB=yes userdel %{user}
+fi
 
 %install
-rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/%{_bindir}
+install -d -D -m 0750 $RPM_BUILD_ROOT/%{statedir}
+install -p -D -m 0755 -t $RPM_BUILD_ROOT/%{_bindir} %{name} 
+install -p -D -m 0644 -t $RPM_BUILD_ROOT/%{confdir} %{name}.yaml
+install -p -D -m 0644 -t $RPM_BUILD_ROOT/%{unitdir} %{name}.service
 pwd
 ls
-cp %{name} $RPM_BUILD_ROOT/%{_bindir}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
+%dir %attr(0750,%{user},%{user}) %{statedir}
 %{_bindir}/%{name}
+%config(noreplace) %{confdir}/%{name}.yaml
+%{unitdir}/%{name}.service
 
 %changelog
 * Wed May 14 2025 Dirk Sammel <dirk.sammel@physik.uni-freiburg.de> - 0.9.3
